@@ -26,5 +26,6 @@
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^6.4.299",
     "tesseract.js": "^7.0.0"
-  }
+  },
+  "license": "MIT"
 }
