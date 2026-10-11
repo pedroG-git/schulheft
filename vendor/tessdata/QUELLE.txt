@@ -1,0 +1,4 @@
+Sprachdaten für die Texterkennung (Tesseract, LSTM "fast"-Modelle), gzip-komprimiert:
+  deu.traineddata.gz, eng.traineddata.gz
+Quelle: https://github.com/tesseract-ocr/tessdata_fast (Commit 87416418657359cb625c412a48b6e1d6d41c29bd)
+Lizenz: Apache License 2.0 (siehe LICENSE in diesem Ordner)

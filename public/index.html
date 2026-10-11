@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="de" data-theme="papier">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Schulheft</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect x='5' y='3' width='22' height='26' rx='4' fill='%234263eb'/><rect x='9' y='9' width='14' height='2.5' rx='1.2' fill='white'/><rect x='9' y='14' width='14' height='2.5' rx='1.2' fill='white'/><rect x='9' y='19' width='9' height='2.5' rx='1.2' fill='white'/></svg>">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div id="app">
+  <aside id="sidebar">
+    <div class="brand">
+      <div class="logo">S</div>
+      <div class="brand-text"><b>Schulheft</b><span>Notizen für die Schule</span></div>
+      <button id="toggle-sidebar" class="icon-btn" title="Seitenleiste ausblenden (⌘\)">⟨</button>
+    </div>
+    <button id="search-btn" class="search-btn"><span>⌕ Suchen …</span><kbd>⌘K</kbd></button>
+    <div class="quick">
+      <button id="today-btn" class="btn primary" title="Heute & diese Woche: Stunden, Hausaufgaben, Fragen">Heute</button>
+      <button id="new-lesson" class="btn" title="Neue Stunde anlegen">+ Neue Stunde</button>
+    </div>
+    <div class="quick files">
+      <button id="add-files" class="btn" title="Dateien hinzufügen (oder einfach ins Fenster ziehen)">+ Dateien hinzufügen</button>
+      <button id="inbox-btn" class="btn inbox-btn" hidden></button>
+    </div>
+    <nav id="nav">
+      <button data-page="home"><span class="ni">⌂</span>Start</button>
+      <button data-page="notes" class="on"><span class="ni">✎</span>Notizen</button>
+      <button data-page="important"><span class="ni">!</span>Wichtig</button>
+      <button data-page="todos"><span class="ni">☑</span>Aufgaben</button>
+      <button data-page="settings"><span class="ni">⚙</span>Einstellungen</button>
+      <button data-page="help"><span class="ni">?</span>Hilfe</button>
+    </nav>
+    <div class="side-scroll">
+      <div class="side-section" id="sec-notes">
+        <h4><span class="caret">›</span>Notizen
+          <span class="h-actions"><button id="new-note" class="mini" title="Neue Notiz">+ Notiz</button><button id="new-folder" class="mini" title="Neuer Ordner">+ Ordner</button></span></h4>
+        <div id="tree-notes" class="tree"></div>
+      </div>
+      <div class="side-section" id="sec-docs">
+        <h4><span class="caret">›</span>Dokumente</h4>
+        <div id="tree-docs" class="tree"></div>
+      </div>
+    </div>
+    <div id="themes" class="themes" title="Farben">
+      <button data-theme="papier" style="--a:#f7f5f0;--b:#4263eb" title="Papier"></button>
+      <button data-theme="nord" style="--a:#2e3440;--b:#88c0d0" title="Nord"></button>
+      <button data-theme="nacht" style="--a:#1e1b2e;--b:#c084fc" title="Nacht"></button>
+      <button data-theme="wald" style="--a:#22261f;--b:#a3be8c" title="Wald"></button>
+    </div>
+  </aside>
+  <button id="show-sidebar" class="icon-btn" title="Seitenleiste zeigen (⌘\)" onclick="document.getElementById('app').classList.remove('no-sidebar')">⟩</button>
+
+  <main id="main">
+    <section id="center">
+      <div id="notes-view">
+        <div id="tabs" class="tabs"></div>
+        <div id="note-toolbar" class="toolbar" hidden>
+          <div class="tb-group">
+            <button data-cmd="h1" title="Große Überschrift">H1</button>
+            <button data-cmd="h2" title="Überschrift">H2</button>
+            <button data-cmd="h3" title="Kleine Überschrift">H3</button>
+            <button data-cmd="bold" title="Fett (⌘B)"><b>B</b></button>
+            <button data-cmd="italic" title="Kursiv (⌘I)"><i>I</i></button>
+            <button data-cmd="list" title="Liste">• Liste</button>
+            <button data-cmd="todo" title="Aufgabe">☐ Aufgabe</button>
+          </div>
+          <div class="tb-group markers">
+            <button data-cmd="imp" class="m-imp" title="Wichtig (!!)">!! Wichtig</button>
+            <button data-cmd="exam" class="m-exam" title="Kommt in die Prüfung (EXAM:)">Prüfung</button>
+            <button data-cmd="def" class="m-def" title="Definition (DEF:)">Definition</button>
+            <button data-cmd="ask" class="m-ask" title="Frage an die Lehrkraft (??)">?? Frage</button>
+            <button data-cmd="hl" class="m-hl" title="Markieren (==Text==)">Markieren</button>
+            <button data-cmd="red" class="m-red" title="Rot (!!Text!!)">Rot</button>
+          </div>
+          <div class="tb-group">
+            <button data-cmd="link" title="Link zu einem Dokument oder einer Notiz">🔗 Link</button>
+            <button data-cmd="image" title="Bild einfügen">🖼 Bild</button>
+          </div>
+          <div class="tb-group chars">
+            <button data-cmd="char">ä</button><button data-cmd="char">ö</button><button data-cmd="char">ü</button><button data-cmd="char">ß</button>
+            <button data-cmd="char">Ä</button><button data-cmd="char">Ö</button><button data-cmd="char">Ü</button>
+          </div>
+          <div class="tb-spacer"></div>
+          <div id="mode-switch" class="seg">
+            <button data-mode="edit" class="on" title="Bearbeiten (⌘E)">Bearbeiten</button>
+            <button data-mode="read" title="Lesen (⌘E)">Lesen</button>
+          </div>
+          <button data-cmd="save" class="btn primary small" title="Speichern (⌘S)">Speichern</button>
+        </div>
+        <div id="mat-bar" class="mat-bar" hidden></div>
+        <div id="editors">
+          <div id="note-empty" class="empty-state">
+            <div class="empty-icon">📓</div>
+            <h2>Keine Notiz offen</h2>
+            <p>Wähle links eine Notiz oder ein Dokument.</p>
+            <div class="empty-btns"><button id="empty-new" class="btn primary">Neue Notiz</button><button id="empty-search" class="btn">Suchen ⌘K</button></div>
+          </div>
+        </div>
+      </div>
+      <div id="page-view" hidden></div>
+    </section>
+    <div id="splitter" hidden title="Ziehen zum Ändern · Doppelklick = Mitte"></div>
+    <section id="docpane" hidden></section>
+  </main>
+</div>
+
+<input type="file" id="image-input" accept="image/*" hidden>
+<input type="file" id="add-input" multiple hidden>
+<div id="drop-overlay"><div class="drop-msg"></div></div>
+<div id="palette"></div>
+<div id="modal"></div>
+<div id="menu"></div>
+<div id="toast"></div>
+<script type="module" src="/dist/app.js"></script>
+</body>
+</html>
