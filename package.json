@@ -1,14 +1,23 @@
 {
   "name": "schulheft",
+  "productName": "Schulheft",
+  "version": "0.1.0",
+  "description": "Notiz-App für Schüler und Azubis",
+  "author": "pedroG-git",
+  "homepage": "https://github.com/pedroG-git/schulheft",
+  "license": "MIT",
   "private": true,
   "type": "module",
+  "main": "electron/main.js",
   "engines": {
     "node": ">=22.13"
   },
   "scripts": {
     "build": "node build.mjs",
     "start": "node server.js",
-    "test": "node --test"
+    "test": "node --test",
+    "app": "node build.mjs && electron .",
+    "dist": "node build.mjs && electron-builder --win --publish never"
   },
   "dependencies": {
     "@codemirror/commands": "^6.11.1",
@@ -20,12 +29,97 @@
     "@lezer/highlight": "^1.2.5",
     "@pdf-lib/fontkit": "^1.1.1",
     "codemirror": "^6.0.2",
-    "esbuild": "^0.28.2",
+    "electron-updater": "^6.8.9",
     "heic-convert": "^2.1.0",
     "marked": "^18.1.0",
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^6.4.299",
     "tesseract.js": "^7.0.0"
   },
-  "license": "MIT"
+  "devDependencies": {
+    "electron": "^44.7.0",
+    "electron-builder": "^26.15.3",
+    "esbuild": "^0.28.2"
+  },
+  "build": {
+    "appId": "io.github.pedrog-git.schulheft",
+    "productName": "Schulheft",
+    "copyright": "MIT-Lizenz",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "package.json",
+      "server.js",
+      "lib/**",
+      "public/**",
+      "electron/**",
+      "vendor/**",
+      "build/icon.png"
+    ],
+    "asarUnpack": [
+      "vendor/tessdata/**",
+      "node_modules/tesseract.js/**",
+      "node_modules/tesseract.js-core/**",
+      "node_modules/bmp-js/**",
+      "node_modules/idb-keyval/**",
+      "node_modules/is-url/**",
+      "node_modules/node-fetch/**",
+      "node_modules/whatwg-url/**",
+      "node_modules/tr46/**",
+      "node_modules/webidl-conversions/**",
+      "node_modules/opencollective-postinstall/**",
+      "node_modules/regenerator-runtime/**",
+      "node_modules/wasm-feature-detect/**",
+      "node_modules/zlibjs/**",
+      "node_modules/heic-convert/**",
+      "node_modules/heic-decode/**",
+      "node_modules/libheif-js/**",
+      "node_modules/jpeg-js/**",
+      "node_modules/pngjs/**"
+    ],
+    "extraFiles": [
+      "LICENSE",
+      "THIRD_PARTY_NOTICES.md"
+    ],
+    "npmRebuild": false,
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "artifactName": "Schulheft-Setup.${ext}",
+      "shortcutName": "Schulheft",
+      "deleteAppDataOnUninstall": false
+    },
+    "mac": {
+      "target": [
+        "dir"
+      ],
+      "icon": "build/icon.png",
+      "identity": null
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "pedroG-git",
+        "repo": "schulheft",
+        "releaseType": "release"
+      }
+    ],
+    "electronLanguages": [
+      "de",
+      "en-US"
+    ]
+  }
 }

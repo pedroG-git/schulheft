@@ -1,7 +1,7 @@
 // Betriebssystem-Aktionen je System, mit nachgebautem execFile: richtige Programme, Pfad immer als eigenes Argument (Daten, kein Code)
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createPlatformActions, WIN_TRASH_SCRIPT, setPlatformActions, trash, reveal, openWithDefaultApp } from '../lib/platform.js';
+import { createPlatformActions, WIN_TRASH_SCRIPT, setPlatformActions, trash, reveal, openWithDefaultApp, checkWinTrashDrive, WIN_DRIVE_CHECK_SCRIPT } from '../lib/platform.js';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -126,4 +126,18 @@ test('setPlatformActions: Electron kann die Aktionen ersetzen; Datei muss danach
     setPlatformActions();
     await fs.rm(dir, { recursive: true, force: true });
   }
+});
+
+// Electron (shell.trashItem): vorher Laufwerk prüfen – UNC/USB/Netzlaufwerk nie, sonst wäre die Datei endgültig weg
+test('checkWinTrashDrive: UNC sofort abgelehnt, Exit 3 abgelehnt, Pfad nur in der Umgebung', async () => {
+  await assert.rejects(checkWinTrashDrive('\\\\server\\share\\a.pdf', { execFile: () => assert.fail('kein PowerShell nötig') }), /keinen Papierkorb/);
+  const seen = [];
+  const exec = code => (cmd, args, opts, cb) => { seen.push({ args, opts }); cb(code ? Object.assign(new Error('x'), { code }) : null); };
+  await assert.rejects(checkWinTrashDrive('E:\\a.pdf', { env: {}, execFile: exec(3) }), /keinen Papierkorb/);
+  await assert.rejects(checkWinTrashDrive('C:\\a.pdf', { env: {}, execFile: exec(1) }), /nicht gelöscht/);
+  await checkWinTrashDrive(NASTY_WIN, { env: {}, execFile: exec(0) });
+  assert.equal(seen.at(-1).opts.env.SCHULHEFT_TARGET, NASTY_WIN);
+  assert.ok(!seen.some(s => s.args.join(' ').includes('Schulheft')));
+  assert.match(WIN_DRIVE_CHECK_SCRIPT, /DriveType -ne 'Fixed'/);
+  assert.doesNotMatch(WIN_DRIVE_CHECK_SCRIPT, /Recycle/);
 });

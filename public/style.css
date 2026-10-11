@@ -712,3 +712,4 @@ mark { background: var(--hl); color: inherit; padding: 0 2px; border-radius: 3px
 .org-g { margin: 6px 8px 2px; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--faint); }
 .org-g:empty { display: none; }
 .btn:disabled { opacity: .5; cursor: default; }
+.modal-card [data-browse] { margin: -6px 0 14px; }

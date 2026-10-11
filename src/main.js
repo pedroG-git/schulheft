@@ -59,6 +59,7 @@ function ask({ title, text = '', buttons, input, locked }) {   // locked: Esc/Kl
     m.innerHTML = `<div class="modal-card" role="dialog">
       <h3>${esc(title)}</h3>${text ? `<p>${esc(text)}</p>` : ''}
       ${input ? `<input class="modal-input" value="${esc(input.value || '')}" placeholder="${esc(input.placeholder || '')}">` : ''}
+      ${input?.browse ? '<button class="btn" data-browse>Durchsuchen …</button>' : ''}
       <div class="modal-btns">${buttons.map((b, i) => `<button class="btn ${b.danger ? 'danger' : i === 0 ? 'primary' : ''}" data-id="${b.id}">${esc(b.label)}</button>`).join('')}</div></div>`;
     m.classList.add('show');
     const inp = $('.modal-input', m);
@@ -68,7 +69,10 @@ function ask({ title, text = '', buttons, input, locked }) {   // locked: Esc/Kl
       if (e.key === 'Enter' && (inp || !e.target.closest('button'))) { e.preventDefault(); e.stopPropagation(); done(buttons[0].id); }
     };
     document.addEventListener('keydown', key, true);
-    m.onclick = e => { const b = e.target.closest('button[data-id]'); if (b) done(b.dataset.id); else if (e.target === m && !locked) done(buttons[buttons.length - 1].id); };
+    m.onclick = e => {
+      // input.browse: z. B. Ordnerauswahl von Electron – füllt nur das Eingabefeld, schließt den Dialog nicht
+      if (e.target.closest('button[data-browse]')) { input.browse(inp.value).then(v => { if (v) inp.value = v; inp.focus(); }, () => {}); return; }
+      const b = e.target.closest('button[data-id]'); if (b) done(b.dataset.id); else if (e.target === m && !locked) done(buttons[buttons.length - 1].id); };
     setTimeout(() => (inp ? (inp.focus(), inp.select()) : $('.modal-btns button', m).focus()), 0);
   });
 }
@@ -992,7 +996,8 @@ async function chooseRoot(info, first) {
       : 'Die App zeigt danach die Notizen aus dem neuen Ordner. Der alte Ordner bleibt, wie er ist (nichts wird verschoben).';
     const v = await ask({
       title: first ? 'Willkommen im Schulheft' : 'Notizordner ändern', text: (err ? `⚠ ${err} ` : '') + intro, locked: first,
-      input: { value, placeholder: info.suggested },
+      // Desktop-App (Electron): Ordner auch über den Windows-Dialog wählen
+      input: { value, placeholder: info.suggested, browse: window.schulheftDesktop?.pickFolder },
       buttons: first ? [{ id: 'ok', label: 'Ordner verwenden' }] : [{ id: 'ok', label: 'Ordner verwenden' }, { id: 'no', label: 'Abbrechen' }],
     });
     if (v == null) return false;

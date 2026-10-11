@@ -26,13 +26,17 @@ if (process.env.SCHULHEFT_TEST_TRASH) {
 
 // Programmordner (HERE) wird zur Laufzeit nur gelesen – Einstellungen, Zwischenspeicher und Notizen liegen pro Nutzer woanders (lib/paths.js)
 const HERE = path.dirname(fileURLToPath(import.meta.url));
+// Echter Programmordner für die Prüfung „Notizordner getrennt vom Programm“: in Electron liegt HERE in …/resources/app.asar,
+// installiert ist aber der ganze Ordner darüber → Electron setzt SCHULHEFT_APP_DIR auf das Installationsverzeichnis.
+const APP_DIR = process.env.SCHULHEFT_APP_DIR ? path.resolve(process.env.SCHULHEFT_APP_DIR) : HERE;
 const CONFIG_DIR = configDir(), CACHE_DIR = cacheDir();
 const config = await loadConfig(CONFIG_DIR);
 // Notizordner: SCHULHEFT_ROOT (Entwicklung) → config.json → noch keiner (dann fragt die App beim Start).
 // Kann sich zur Laufzeit ändern (POST /api/setup) → überall ROOT zur Aufrufzeit lesen, nie zwischenspeichern.
 let ROOT = null, ROOT_FROM = null, ROOT_PROBLEM = '';
 const PUBLIC = path.join(HERE, 'public');
-const PORT = Number(process.env.PORT || 4711);
+// PORT=0 → freier Port (Electron); der echte Port steht nach listen() in PORT
+let PORT = Number(process.env.PORT || 4711);
 const PLATFORM = process.platform;
 
 const DOC_EXT = new Set(['.pdf', '.png', '.jpg', '.jpeg', '.gif', '.webp']);
@@ -899,8 +903,8 @@ async function welcomeNote(root) {
 // ── Notizordner ─────────────────────────────────────────────────
 // Prüfen (auch über Symlinks hinweg): kein Laufwerk, nicht der Benutzerordner, getrennt vom Programmordner
 function validRoot(input) {
-  const root = checkDataRoot(input, { appDir: HERE });
-  checkDataRoot(realish(root), { appDir: realish(HERE), home: realish(os.homedir()) });
+  const root = checkDataRoot(input, { appDir: APP_DIR });
+  checkDataRoot(realish(root), { appDir: realish(APP_DIR), home: realish(os.homedir()) });
   return root;
 }
 function setRoot(root, from) {
@@ -959,4 +963,14 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, '127.0.0.1', () => console.log(`Schulheft läuft: http://localhost:${PORT}` + (ROOT ? '' : ' (noch kein Notizordner gewählt)')));
+// Für Electron: wartet, bis der Server läuft, und liefert den Port
+export const ready = new Promise((resolve, reject) => {
+  server.once('error', reject);
+  server.listen(PORT, '127.0.0.1', () => {
+    PORT = server.address().port;
+    console.log(`Schulheft läuft: http://localhost:${PORT}` + (ROOT ? '' : ' (noch kein Notizordner gewählt)'));
+    resolve(PORT);
+  });
+});
+// Direkt mit node gestartet: Fehler (z. B. Port belegt) wie bisher melden und beenden
+ready.catch(e => { console.error(e.message); if (!process.versions.electron) process.exit(1); });

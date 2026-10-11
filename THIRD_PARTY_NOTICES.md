@@ -16,7 +16,9 @@ shipped with the installer).
 | tessdata_fast `deu`, `eng` (`vendor/tessdata/`) | Apache-2.0 | OCR language data, see `vendor/tessdata/` |
 | heic-convert, heic-decode | ISC | HEIC photo conversion |
 | libheif-js | **LGPL-3.0** | HEIC decoder; used unmodified as a separate, replaceable module. Source: https://github.com/catdad-experiments/libheif-js |
-| esbuild | MIT | build tool only (not shipped) |
+| Electron | MIT (Chromium: BSD-style and others) | desktop app; `LICENSE.electron.txt` and `LICENSES.chromium.html` are in the install folder |
+| electron-updater | MIT | automatic updates from GitHub Releases |
+| esbuild, electron-builder | MIT | build tools only (not shipped) |
 
 HEIC/HEVC decoding may be subject to patents in some countries; this notice
 makes no statement about them.
