@@ -687,15 +687,17 @@ async function batchDone(res) {
   await reloadTargets(res.lessons);
   const parts = [];
   if (res.skipped.length) parts.push(`${res.skipped.length} übersprungen (gab es schon)`);
+  const binNote = res.trashed.length ? `${res.trashed.length} doppelte ${res.trashed.length === 1 ? 'Kopie' : 'Kopien'} aus dem Eingang im Papierkorb (nicht rückgängig – bei Bedarf im Papierkorb wiederherstellen)` : '';
+  if (binNote) parts.push(binNote);
   if (res.errors.length) parts.push(`${res.errors.length} Fehler: ${res.errors[0]}`);
   const head = `${res.done} ${res.done === 1 ? 'Datei' : 'Dateien'} einsortiert`;
-  if (!res.done) { toast(parts.join(' · ') || 'Nichts einsortiert', !!res.errors.length); return; }
+  if (!res.done) { toast(parts.join(' · ') || 'Nichts einsortiert', !!res.errors.length || !!binNote); return; }
   toastAction([head, ...parts].join(' · '), 'Rückgängig', async () => {
     try {
       await saveTargets(res.lessons);
       const u = await api.undoFiles(res.batch);
       await reloadTargets(res.lessons);
-      toast(u.problems.length ? `Rückgängig, aber: ${u.problems[0]}` : 'Rückgängig gemacht', !!u.problems.length);
+      toast(u.problems.length ? `Rückgängig, aber: ${u.problems[0]}` : binNote ? 'Rückgängig gemacht – die Kopien im Papierkorb bitte dort wiederherstellen' : 'Rückgängig gemacht', !!u.problems.length || !!binNote);
     } catch (e) { toast(e.message, true); }
   });
 }

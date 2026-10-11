@@ -608,6 +608,8 @@ const isoToday = () => { const d = new Date(); return `${d.getFullYear()}-${pad(
 // Mit dem Standardprogramm öffnen: nur Dokumente (keine .exe, .bat, .cmd, .ps1, .lnk, .app, .sh …)
 const OPEN_EXT = new Set(['.pdf', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.heic', '.heif', '.doc', '.docx', '.ppt', '.pptx', '.xls', '.xlsx', '.odt', '.ods', '.odp', '.txt', '.rtf', '.csv']);
 const MAT_EXT = new Set(['.pdf', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.heic', '.heif', '.doc', '.docx', '.ppt', '.pptx', '.xls', '.xlsx', '.odt', '.ods', '.odp', '.txt']);
+// Hinzufügen / Hereinziehen: nur PDF, Bilder (auch HEIC) und Office-Dateien (gleiche Liste wie ADD_EXT in src/organizer.js)
+const ADD_EXT = new Set(['.pdf', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.heic', '.heif', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.odt', '.ods', '.odp']);
 
 // Datei schreiben, ohne je etwas zu überschreiben: names(i) liefert den Namen für Versuch i (1, 2, 3 …)
 async function writeNew(dir, names, data) {
@@ -626,7 +628,7 @@ const storedExt = name => (/\.hei[cf]$/i.test(name) ? '.jpg' : path.extname(name
 // danach im Hintergrund PDF-Text lesen bzw. Bild erkennen (für die Suche)
 function checkMatExt(name) {
   const ext0 = path.extname(name).toLowerCase();
-  if (!MAT_EXT.has(ext0)) throw new HttpError(400, `Dateityp ${ext0 || '?'} geht nicht (PDF, Bilder, Word …)`);
+  if (!ADD_EXT.has(ext0)) throw new HttpError(400, `Dateityp ${ext0 || '?'} geht nicht (nur PDF, Bilder, Word, Excel, PowerPoint)`);
 }
 async function prepareUpload(orig, data) {
   checkMatExt(orig);
@@ -827,6 +829,8 @@ Object.assign(api, {
   },
 
   // Dateien aus dem Eingang einsortieren: items [{ from, dest, name?, dup? }]
+  // dup: 'keep' = trotzdem verschieben, 'trash' = gleiche Datei liegt schon im Ziel → Kopie im Eingang in den Papierkorb
+  // (der Papierkorb lässt sich nicht per Programm zurückholen – darum kein Rückgängig dafür)
   'POST /api/files/move': async req => {
     const { batch, items } = await json(req);
     const b = batchOf(batch), inbox = path.join(ROOT, INBOX_DIR), results = [];
@@ -840,6 +844,7 @@ Object.assign(api, {
         const name = it.name ? withExt(it.name, path.extname(src)) : path.basename(src);
         if (it.dup !== 'keep') {
           const ex = await findDuplicate(d.dir, (await fs.stat(src)).size, await sha256File(src));
+          if (ex && it.dup === 'trash') { await osAction(trash, src); results.push({ status: 'trashed', existing: relOf(ex), path: relOf(src) }); continue; }
           if (ex) { results.push({ status: 'duplicate', existing: relOf(ex), path: relOf(src) }); continue; }
         }
         const to = await moveNew(src, d.dir, name);

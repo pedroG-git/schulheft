@@ -58,8 +58,9 @@ export const helpHtml = keys(`<div class="page-pad help">
 <li>Dateien oder ganze Ordner <b>irgendwo ins Fenster ziehen</b> – oder <b>+ Dateien hinzufügen</b> links oben.</li>
 <li>Auf die offene Stunde: in deren <code>Material</code>. Auf einen Ordner links: in diesen Ordner. Sonst fragt <b>Dateien einsortieren</b>, wohin: vorgeschlagen ist die Stunde, die gerade läuft (oder die letzte).</li>
 <li><b>Später – in den Eingang</b>: die Dateien warten in <code>_Eingang</code>. Links und auf der Startseite steht dann <b>Eingang</b> mit der Anzahl – ein Klick, und du sortierst sie ein.</li>
-<li>Gibt es genau dieselbe Datei am Ziel schon, wird sie übersprungen. Aus Ordnern werden nur die Dateien übernommen (ohne Unterordner).</li>
-<li>Danach: <b>Rückgängig</b> in der Meldung unten – neue Dateien kommen in den Papierkorb, Dateien aus dem Eingang zurück in den Eingang, die Links verschwinden.</li>
+<li>Erlaubt sind nur <b>PDF</b>, <b>Bilder</b> (auch iPhone-Fotos HEIC) und <b>Office-Dateien</b> (Word, Excel, PowerPoint, OpenOffice). Andere Dateien sind grau und werden übersprungen.</li>
+<li>Gibt es genau dieselbe Datei am Ziel schon, wird sie übersprungen. Liegt eine Datei aus dem Eingang dort schon, fragt die App: Kopie im Eingang in den Papierkorb legen (<b>Ja</b>) oder im Eingang lassen (<b>Nein</b>). Aus Ordnern werden nur die Dateien übernommen (ohne Unterordner).</li>
+<li>Danach: <b>Rückgängig</b> in der Meldung unten – neue Dateien kommen in den Papierkorb, Dateien aus dem Eingang zurück in den Eingang, die Links verschwinden. Kopien, die in den Papierkorb gelegt wurden, holst du dort selbst zurück.</li>
 </ul></div>
 
 <div class="help-card"><h3>Übersicht (Fach → Einheit)</h3>

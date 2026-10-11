@@ -4,7 +4,9 @@ import { api, rawUrl, basename, lessonLabel } from './api.js';
 import { suggestLesson, INBOX_DIR } from '../lib/lesson.js';
 
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const OK_EXT = /\.(pdf|png|jpe?g|gif|webp|heic|heif|docx?|pptx?|xlsx?|odt|ods|odp|txt)$/i;
+// Hinzufügen: nur PDF, Bilder (auch HEIC) und Office-Dateien (gleiche Liste wie ADD_EXT in server.js)
+export const ADD_EXT = ['.pdf', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.heic', '.heif', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.odt', '.ods', '.odp'];
+const OK_EXT = new RegExp(`(${ADD_EXT.map(e => e.replace('.', '\\.')).join('|')})$`, 'i');
 const IMG = /\.(png|jpe?g|gif|webp)$/i;
 const SYS = new Set(['.DS_Store', 'desktop.ini', 'Thumbs.db', '.localized']);
 const extOf = n => (n.match(/\.[^./]+$/) || [''])[0];
@@ -37,9 +39,10 @@ export function filesFromDrop(dt) {
 const finalName = (value, orig) => { const v = String(value || '').trim() || orig, e = extOf(orig); return extOf(v).toLowerCase() === e.toLowerCase() ? v : v + e; };
 const batchId = () => 'b-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
 
-// Eine Liste ausführen: rows [{ file | from, dest, name, keep }] → { done, skipped, errors, lessons, batch }
+// Eine Liste ausführen: rows [{ file | from, dest, name, keep, trash }] → { done, skipped, trashed, errors, lessons, batch }
+// trash: gleiche Datei liegt schon im Ziel → Kopie im Eingang in den Papierkorb (nicht rückgängig zu machen)
 export async function runBatch(rows, progress = () => {}) {
-  const batch = batchId(), res = { done: 0, skipped: [], errors: [], lessons: new Set(), batch };
+  const batch = batchId(), res = { done: 0, skipped: [], trashed: [], errors: [], lessons: new Set(), batch };
   const uploads = rows.filter(r => r.file), moves = rows.filter(r => r.from);
   let i = 0;
   for (const r of uploads) {
@@ -53,10 +56,11 @@ export async function runBatch(rows, progress = () => {}) {
   if (moves.length) {
     progress(rows.length, rows.length);
     try {
-      const { results } = await api.moveFiles(batch, moves.map(r => ({ from: r.from, dest: r.dest, name: r.name, dup: r.keep ? 'keep' : '' })));
+      const { results } = await api.moveFiles(batch, moves.map(r => ({ from: r.from, dest: r.dest, name: r.name, dup: r.trash ? 'trash' : r.keep ? 'keep' : '' })));
       results.forEach((x, k) => {
         if (x.status === 'moved') { res.done++; if (x.lesson) res.lessons.add(x.lesson); }
         else if (x.status === 'duplicate') res.skipped.push(`${moves[k].name} (schon da: ${basename(x.existing)})`);
+        else if (x.status === 'trashed') res.trashed.push(moves[k].name);
         else if (x.status === 'error') res.errors.push(`${moves[k].name}: ${x.error}`);
       });
     } catch (e) { res.errors.push(e.message); }
@@ -93,7 +97,8 @@ export function openOrganizer(ctx, { files = [], inbox = [] }) {
     return '📁 ' + d.split('/').join(' / ');
   };
   const destOf = r => r.dest ?? dest;
-  const usable = () => rows.filter(r => r.ok && destOf(r) != null && !(r.dup && r.skip) && !(inboxMode && destOf(r) === INBOX_DIR));
+  const skipped = r => r.dup && (r.from ? !r.trash : r.skip);   // Eingang: „Nein“ = bleibt im Eingang
+  const usable = () => rows.filter(r => r.ok && destOf(r) != null && !skipped(r) && !(inboxMode && destOf(r) === INBOX_DIR));
 
   function render() {
     const n = usable().length, bad = rows.filter(r => !r.ok).length;
@@ -105,8 +110,11 @@ export function openOrganizer(ctx, { files = [], inbox = [] }) {
         <span class="org-thumb">${r.thumb ? `<img src="${esc(r.thumb)}" alt="">` : icon(r.orig)}</span>
         <span class="org-main">
           <input class="org-name" value="${esc(r.name)}" title="Name (zum Umbenennen ändern)" ${r.ok ? '' : 'disabled'}>
-          <span class="org-meta">${fmtSize(r.size)}${r.ok ? ` · <button class="org-dest small" data-pick="${esc(r.id)}" title="Nur für diese Datei ein anderes Ziel">${r.dest == null ? 'Ziel wie oben' : esc(label(r.dest))} ▾</button>` : ' · <b>Dateityp geht nicht</b> (PDF, Bilder, Word, PowerPoint, Excel, Text)'}</span>
-          ${r.dup ? `<span class="org-dup">⚠ Gibt es dort schon: ${esc(basename(r.dup))} <label><input type="checkbox" data-skip="${esc(r.id)}" ${r.skip ? 'checked' : ''}> überspringen</label></span>` : ''}
+          <span class="org-meta">${fmtSize(r.size)}${r.ok ? ` · <button class="org-dest small" data-pick="${esc(r.id)}" title="Nur für diese Datei ein anderes Ziel">${r.dest == null ? 'Ziel wie oben' : esc(label(r.dest))} ▾</button>` : ' · <b>Dateityp geht nicht</b> (nur PDF, Bilder, Word, Excel, PowerPoint)'}</span>
+          ${r.dup && r.from ? `<span class="org-dup">⚠ Diese Datei liegt dort schon (gleicher Inhalt: ${esc(basename(r.dup))}). Die Kopie im Eingang in den Papierkorb legen?
+            <label><input type="radio" name="trash-${esc(r.id)}" data-trash="${esc(r.id)}" value="1" ${r.trash ? 'checked' : ''}> Ja</label>
+            <label><input type="radio" name="trash-${esc(r.id)}" data-trash="${esc(r.id)}" value="0" ${r.trash ? '' : 'checked'}> Nein, im Eingang lassen</label></span>`
+          : r.dup ? `<span class="org-dup">⚠ Gibt es dort schon: ${esc(basename(r.dup))} <label><input type="checkbox" data-skip="${esc(r.id)}" ${r.skip ? 'checked' : ''}> überspringen</label></span>` : ''}
         </span>
         <button class="org-x" data-remove="${esc(r.id)}" title="Nicht einsortieren">✕</button></li>`).join('')}</ul>
       ${bad ? `<p class="org-note">${bad} ${bad === 1 ? 'Datei wird' : 'Dateien werden'} übersprungen (Dateityp).</p>` : ''}
@@ -153,7 +161,7 @@ export function openOrganizer(ctx, { files = [], inbox = [] }) {
       for (const r of list) if (r.file && !r.sha && r.size < 300 * 1048576) r.sha = await sha256(r.file);
       const { items } = await api.checkFiles(list.map(r => r.file ? { dest: destOf(r), size: r.size, sha256: r.sha || '' } : { dest: destOf(r), from: r.from }));
       if (my !== checkSeq) return;
-      list.forEach((r, i) => { const d = items[i]?.duplicate || null; if (d !== r.dup) { r.dup = d; r.skip = true; } });
+      list.forEach((r, i) => { const d = items[i]?.duplicate || null; if (d !== r.dup) { r.dup = d; r.skip = true; r.trash = true; } });
       if (!picker) render();
     } catch { /* Prüfung ist nur ein Hinweis – der Server prüft beim Einsortieren noch einmal */ }
   }
@@ -176,7 +184,7 @@ export function openOrganizer(ctx, { files = [], inbox = [] }) {
     const lessonsHit = [...new Set(list.map(destOf).filter(d => d.endsWith('.md')))];
     try {
       await ctx.beforeWrite(lessonsHit);   // ungespeicherte Änderungen in diesen Stunden zuerst sichern
-      const res = await runBatch(list.map(r => ({ file: r.file, from: r.from, dest: destOf(r), name: finalName(r.name, r.orig), keep: !!r.dup && !r.skip })),
+      const res = await runBatch(list.map(r => ({ file: r.file, from: r.from, dest: destOf(r), name: finalName(r.name, r.orig), keep: !!r.dup && !r.skip && !r.from, trash: !!r.dup && !!r.from && !!r.trash })),
         (i, n) => { const b = card.querySelector('[data-act=go]'); if (b) b.textContent = `Einsortieren … ${i}/${n}`; });
       close();
       ctx.finish(res);
@@ -195,7 +203,9 @@ export function openOrganizer(ctx, { files = [], inbox = [] }) {
     if (t.dataset.act === 'go') go();
   });
   el.addEventListener('input', e => { if (e.target.matches('.org-name')) { const r = rows.find(x => x.id === e.target.closest('.org-row').dataset.id); if (r) r.name = e.target.value; } });
-  el.addEventListener('change', e => { if (e.target.dataset.skip) { const r = rows.find(x => x.id === e.target.dataset.skip); if (r) { r.skip = e.target.checked; render(); } } });
+  el.addEventListener('change', e => {
+    if (e.target.dataset.trash) { const r = rows.find(x => x.id === e.target.dataset.trash); if (r) { r.trash = e.target.value === '1'; render(); } return; }
+    if (e.target.dataset.skip) { const r = rows.find(x => x.id === e.target.dataset.skip); if (r) { r.skip = e.target.checked; render(); } } });
   el.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.matches('.org-name')) { e.preventDefault(); go(); } });
 
   const thumbs = list => list.forEach(r => {

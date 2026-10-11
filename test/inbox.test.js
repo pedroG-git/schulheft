@@ -90,6 +90,22 @@ test('Einsortieren: Ordner, Stunde, Eingang, Doppelte, Rückgängig, Pfade auße
     r = await post('/api/files/move', { batch: 'batch-4', items: [{ from: '../geheim.pdf', dest: 'Bio' }, { from: '_Eingang/../../geheim.pdf', dest: 'Bio' }, { from: '_Eingang/Foto.png', dest: '../' }] });
     assert.deepEqual(r.data.results.map(x => x.status), ['error', 'error', 'error']);
     assert.ok(existsSync(path.join(tmp, 'geheim.pdf')) && existsSync(path.join(data, '_Eingang/Foto.png')));
+
+    // Dateitypen: nur PDF, Bilder (auch HEIC), Office – kein Text
+    for (const n of ['notiz.txt', 'liste.csv', 'text.rtf', 'seite.html', 'x.md']) assert.equal((await add('Bio', n, 'E')).status, 400, n);
+    for (const n of ['a.docx', 'b.xlsx', 'c.pptx', 'd.odt', 'e.ods', 'f.odp', 'g.doc', 'h.xls', 'i.ppt']) assert.equal((await add('Bio', n, n)).data.status, 'added', n);
+
+    // Eingang, gleiche Datei schon im Ziel: ohne dup → bleibt im Eingang; dup=trash → Kopie im Eingang in den Papierkorb (kein Rückgängig)
+    assert.equal((await add('Bio', 'Foto-Kopie.png', 'D', 'batch-5')).data.path, 'Bio/Foto-Kopie.png');
+    r = await post('/api/files/move', { batch: 'batch-6', items: [{ from: '_Eingang/Foto.png', dest: 'Bio' }] });
+    assert.deepEqual(r.data.results[0], { status: 'duplicate', existing: 'Bio/Foto-Kopie.png', path: '_Eingang/Foto.png' });
+    assert.ok(existsSync(path.join(data, '_Eingang/Foto.png')));
+    r = await post('/api/files/move', { batch: 'batch-6', items: [{ from: '_Eingang/Foto.png', dest: 'Bio', dup: 'trash' }] });
+    assert.deepEqual(r.data.results[0], { status: 'trashed', existing: 'Bio/Foto-Kopie.png', path: '_Eingang/Foto.png' });
+    assert.ok(!existsSync(path.join(data, '_Eingang/Foto.png')));
+    assert.ok((await fs.readdir(bin)).some(n => n.endsWith('-Foto.png')));
+    assert.equal(await read('Bio/Foto-Kopie.png'), 'D');
+    assert.deepEqual((await post('/api/files/undo', { batch: 'batch-6' })).data, { undone: 0, problems: [] });
   } finally {
     await new Promise(res => { child.once('exit', res); child.kill(); });
   }
